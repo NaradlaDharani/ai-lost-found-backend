@@ -1,6 +1,9 @@
-
 package jar.controller;
 
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,18 +20,40 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
-    public AuthenticationController(
-            AuthenticationService authenticationService) {
+    public AuthenticationController(AuthenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
 
     @PostMapping("/register")
-    public String register(@RequestBody RegisterRequest request) {
-        return authenticationService.register(request);
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        if (request == null ||
+            request.getEmail() == null || request.getEmail().trim().isEmpty() ||
+            request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Email and password are required.");
+        }
+
+        String result = authenticationService.register(request);
+        if ("User registered successfully".equals(result)) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }
     }
 
     @PostMapping("/login")
-    public User login(@RequestBody LoginRequest request) {
-        return authenticationService.login(request);
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        if (request == null ||
+            request.getEmail() == null || request.getEmail().trim().isEmpty() ||
+            request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and password are required."));
+        }
+
+        User user = authenticationService.login(request);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid email or password."));
+        }
+
+        return ResponseEntity.ok(user);
     }
 }

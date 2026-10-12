@@ -1,10 +1,12 @@
-
 package jar.item;
 
 import java.util.List;
+import java.util.Map;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +18,6 @@ import jar.repo.UserRepository;
 
 @RestController
 @RequestMapping("/api/found-items")
-@CrossOrigin(origins = "http://localhost:5176")
 public class FoundItemController {
 
     private final FoundItemRepository foundItemRepository;
@@ -31,20 +32,31 @@ public class FoundItemController {
     }
 
     @PostMapping
-    public FoundItem addFoundItem(
+    public ResponseEntity<?> addFoundItem(
             @RequestBody FoundItem foundItem,
             @RequestParam Long userId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User with ID " + userId + " not found."));
+        }
 
         foundItem.setUser(user);
-
-        return foundItemRepository.save(foundItem);
+        FoundItem saved = foundItemRepository.save(foundItem);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @GetMapping
     public List<FoundItem> getFoundItems() {
         return foundItemRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getFoundItemById(@PathVariable Long id) {
+        return foundItemRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body((FoundItem) null));
     }
 }
